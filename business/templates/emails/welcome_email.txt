@@ -1,0 +1,23 @@
+Your business is now active.
+
+Next Steps:
+1. Install ITS POS App (if not already installed)
+2. Register your device using the Device Registration Key provided below
+3. Use the PIN provided below to log in
+
+Account Number: {{ business.id|stringformat:"08d" }}
+Business Name: {{ business.business_name }}
+Brand Name: {{ business.brand_name|default:"Not specified" }}
+Primary Contact: {{ business.first_name }} {{ business.last_name }}
+
+Device Registration Key: {{ business.device_key }}
+Valid for one-time use until: {{ business.activation_token_expires|date:"M j, Y" }}
+User ID: {{ business.user_id }}
+PIN: {{ business.pin }}
+
+Use the Account Number specified above for all future communication.
+
+Thanks for doing business with us,
+The ITS Apps Team.
+
+(This message was sent from a notification-only address. Please do not reply.)
