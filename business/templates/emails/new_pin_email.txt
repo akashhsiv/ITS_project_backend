@@ -1,0 +1,13 @@
+Dear {{ business.first_name }},
+
+Your new PIN has been successfully generated.
+
+Here are your updated credentials:
+
+User ID: {{ business.user_id }}  
+New PIN: {{ new_pin }}
+
+Please keep this information secure.
+
+Thanks,  
+ITS Team

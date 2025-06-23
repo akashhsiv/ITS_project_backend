@@ -39,14 +39,21 @@ class Business(models.Model):
 
     
     # Activation email fields
+    account_number = models.CharField(max_length=20, blank=True, null=True)
     device_key = models.CharField(max_length=20, blank=True, null=True)
+    device_label = models.CharField(max_length=100)
     pin = models.CharField(max_length=6, blank=True, null=True)
     user_id = models.CharField(max_length=20, blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=False)
+    device_key_expires = models.DateTimeField(null=True, blank=True)
     activation_token = models.UUIDField(default=uuid.uuid4, editable=True, null=True, blank=True)
     activation_token_expires = models.DateTimeField(blank=True, null=True)
+
+    # Forgot PIN
+    forgot_pin_token = models.UUIDField(null=True, blank=True)
+    forgot_pin_token_expires = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.business_name
@@ -67,3 +74,14 @@ class Business(models.Model):
         if not self.activation_token or not self.activation_token_expires:
             return False
         return timezone.now() < self.activation_token_expires
+    
+    def generate_forgot_pin_token(self):
+        self.forgot_pin_token = uuid.uuid4()
+        self.forgot_pin_token_expires = timezone.now() + timedelta(hours=24)
+        self.save(update_fields=['forgot_pin_token', 'forgot_pin_token_expires'])
+        return self.forgot_pin_token
+    
+    def is_forgot_pin_token_valid(self):
+        return self.forgot_pin_token and self.forgot_pin_token_expires and timezone.now() < self.forgot_pin_token_expires
+
+
