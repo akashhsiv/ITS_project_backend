@@ -30,7 +30,7 @@ class BusinessViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         account_number = str(random.randint(10000000, 99999999))
         device_key = generate_key("DC", 8)
-        user_id = generate_key("UZ", 6)
+        user_id = generate_key("ITS", 6)
         pin = str(random.randint(1000, 9999))
 
         business = serializer.save(
