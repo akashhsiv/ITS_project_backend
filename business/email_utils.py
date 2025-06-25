@@ -111,13 +111,15 @@ def send_forgot_pin_email(business, reset_url):
         'reset_url': reset_url
     }
 
-    plain_message = render_to_string('emails/forgot_pin_email.txt', context)
+    html_message = render_to_string('emails/forgot_pin_email.html', context)
+    plain_message = strip_tags(html_message)
 
     send_mail(
         subject=subject,
         message=plain_message,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[business.email],
+        html_message=html_message,
         fail_silently=False,
     )
 
@@ -139,3 +141,4 @@ def send_new_pin_email(business, new_pin):
         recipient_list=[business.email],
         fail_silently=False,
     )
+

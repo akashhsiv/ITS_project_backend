@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reset Your ITS Business Account PIN</title>
+    <style>
+        /* ——— same global styles you already use ——— */
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { max-width: 200px; margin-bottom: 20px; }
+        .button {
+            display: inline-block; 
+            padding: 12px 24px; 
+            background-color: #4CAF50;      /* keep your ITS green */
+            color: #fff; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer { 
+            margin-top: 40px; 
+            font-size: 12px; 
+            color: #777; 
+            text-align: center; 
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Reset Your ITS Business PIN</h1>
+    </div>
+
+    <p>Dear {{ business.first_name }},</p>
+
+    <p>We received a request to reset the <strong>PIN</strong> for your account.</p>
+
+    <p style="text-align: center;">
+        <a href="{{ reset_url }}" class="button">Reset PIN</a>
+    </p>
+
+    <p>This link will be valid for <strong>24 hours</strong>. If you did not request a PIN reset, you can safely ignore this email.</p>
+
+    <!-- Optional same dev note block -->
+    <div style="background:#f5f5f5;padding:15px;border-radius:4px;margin:15px 0;border-left:4px solid #ff9800;">
+        <p style="margin:0 0 10px 0;font-weight:bold;color:#e65100;">Development Note:</p>
+        <p style="margin:0;">If you see a security warning, click “Advanced” and then “Proceed to localhost (unsafe)” to complete the reset.</p>
+    </div>
+
+    <p>Or copy and paste this link into your browser’s address bar:</p>
+    <div style="background:#f5f5f5;padding:10px;border-radius:4px;word-break:break-all;margin:10px 0 20px 0;font-family:monospace;">
+        {{ reset_url }}
+    </div>
+
+    <p style="color:#666;font-size:14px;margin-top:25px;">
+        Having trouble? Contact our support team at <a href="mailto:support@yourdomain.com">support@yourdomain.com</a>
+    </p>
+
+    <p>Best regards,<br>The ITS Team</p>
+
+    <div class="footer">
+        <p>This is an automated message, please do not reply directly to this email.</p>
+        <p>&copy; {% now "Y" %} ITS Business Solutions. All rights reserved.</p>
+    </div>
+</body>
+</html>

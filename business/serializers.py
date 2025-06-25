@@ -6,7 +6,7 @@ class BusinessSerializer(serializers.ModelSerializer):
     class Meta:
         model = Business
         exclude = ['device_key', 'pin', 'user_id', 'is_active',
-                   'activation_token', 'activation_token_expires', 'forgot_pin_token', 'forgot_pin_token_expires', 'account_number', 'device_key_expires', 'device_label']
+                   'activation_token', 'activation_token_expires', 'forgot_pin_token', 'forgot_pin_token_expires', 'account_number', 'device_label']
         read_only_fields = ['device_key', 'pin', 'user_id']
 
 

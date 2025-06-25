@@ -32,12 +32,10 @@ class BusinessViewSet(viewsets.ModelViewSet):
         device_key = generate_key("DC", 8)
         user_id = generate_key("UZ", 6)
         pin = str(random.randint(1000, 9999))
-        device_key_expires = timezone.now() + timedelta(days=7)
 
         business = serializer.save(
             account_number=account_number,
             device_key=device_key,
-            device_key_expires=device_key_expires,
             user_id=user_id,
             pin=pin,
             is_active=False
@@ -103,11 +101,10 @@ class BusinessViewSet(viewsets.ModelViewSet):
 
         business = serializer.validated_data['business']
         new_device_key = generate_key("DC", 8)
-        new_expiry = timezone.now() + timedelta(days=7)
 
         business.device_key = new_device_key
         business.device_key_expires = new_expiry
-        business.save(update_fields=["device_key", "device_key_expires"])
+        business.save(update_fields=["device_key"])
 
         try:
             # Resend the welcome email with existing credentials

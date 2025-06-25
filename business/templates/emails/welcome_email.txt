@@ -11,7 +11,6 @@ Brand Name: {{ business.brand_name|default:"Not specified" }}
 Primary Contact: {{ business.first_name }} {{ business.last_name }}
 
 Device Registration Key: {{ business.device_key }}
-Valid for one-time use until: {{ business.device_key_expires|date:"M j, Y" }}
 User ID: {{ business.user_id }}
 PIN: {{ business.pin }}
 

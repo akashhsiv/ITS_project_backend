@@ -5,7 +5,6 @@ As per your request, we have generated a new Device Registration Key for the fol
 Business Name:         {{ business.business_name }}
 Branch Name:           {{ business.city }}
 Device Registration Key: {{ business.device_key }}
-Valid for one-time use until: {{ business.device_key_expires|date:"M j, Y" }}
 
 Thanks for doing business with us,  
 The ITS Team

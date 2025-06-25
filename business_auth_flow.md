@@ -17,7 +17,6 @@ This document outlines the full authentication flow for businesses registering a
   - `device_key` (e.g. `DCXXXXXX`)
   - `user_id` (e.g. `UZ1234`)
   - `pin` (4-digit)
-  - `device_key_expires` (7 days from creation)
 - `is_active` is set to `False`.
 - An **activation email** is sent with:
   - Activate Account Link
