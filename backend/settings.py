@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'backend',
     'business',
+    'inventory'
 ]
 
 MIDDLEWARE = [
@@ -80,7 +81,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'its',
+        'NAME': 'postgres',
         'USER': 'postgres',
         'PASSWORD': '12345',
         'HOST': 'localhost',
