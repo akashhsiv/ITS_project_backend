@@ -29,6 +29,10 @@ class BusinessUserSerializer(serializers.ModelSerializer):
         user.role = "admin"
         user.save()
 
+        send_activation_email(
+            user, self.context.get("request")
+        )
+
         return user
 
 

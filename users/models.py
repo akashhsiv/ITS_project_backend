@@ -109,7 +109,6 @@ class User(AbstractBaseUser):
 
     # Roles & Access
     role = models.CharField(max_length=50)
-    user_level = models.PositiveSmallIntegerField(default=1)
 
     permitted_stores = ArrayField(
         base_field=models.CharField(max_length=100),
@@ -145,6 +144,13 @@ class User(AbstractBaseUser):
     device_key = models.CharField(max_length=20, blank=True, null=True)
     device_label = models.CharField(max_length=100, blank=True)
 
+    # Field for Go Offline functionality
+    STATUS_CHOICES = [
+        ('online', 'Online'),
+        ('offline', 'Offline'),
+    ]
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='offline')
     # Activation flow
     is_active = models.BooleanField(default=False)
     activation_token = models.UUIDField(

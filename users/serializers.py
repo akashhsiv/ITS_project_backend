@@ -45,7 +45,6 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
-            "user_level",
             "permitted_stores",
             "permitted_licenses",
             "permitted_brands",
@@ -229,3 +228,16 @@ class ChangePinSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_pin"])  # hashes the new PIN
         user.save(update_fields=["password"])
         return user
+
+#Go offline serializer
+class GoOfflineSerializer(serializers.Serializer):
+    user_id = serializers.CharField(required=True)  # User ID to identify the user
+    pin = serializers.CharField(required=True, max_length=6)  # PIN for authentication
+    
+#Account serializer
+class AccountSerializer(serializers.Serializer):
+    user_id = serializers.CharField(required=True)  # User ID to identify the user
+    
+    
+
+ 

@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404
 from .email_utils import send_new_pin_email, send_request_registration_key_email
 
 from .models import User
-from .serializers import ChangePinSerializer, DeviceVerificationSerializer, ForgotPinSerializer, ResetDeviceSerializer, UserIDTokenObtainPairSerializer, UserCreateSerializer, UserSerializer, generate_key
+from .serializers import AccountSerializer, ChangePinSerializer, DeviceVerificationSerializer, ForgotPinSerializer, GoOfflineSerializer, ResetDeviceSerializer, UserIDTokenObtainPairSerializer, UserCreateSerializer, UserSerializer, generate_key
 from .email_utils import send_activation_email, send_welcome_email, send_forgot_pin_email
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.db import transaction
@@ -211,6 +211,112 @@ class UserViewSet(
             {"message": "PIN changed successfully."},
             status=status.HTTP_200_OK
         )
+
+    @action(detail=False, methods=['get'], url_path='test-notifications')
+    def test_notifications(self, request):
+        logger.info(f"Test notification sent to user {request.user}.")
+        return Response({"message": "Test notification sent successfully."}, status=status.HTTP_200_OK)
+
+    #Go offline functionality in UserControls
+    @action(detail=False, methods=['post'], url_path='go-offline', permission_classes=[AllowAny], serializer_class=GoOfflineSerializer)
+    def go_offline(self, request):
+        """
+        Update the user's status to offline after verifying the PIN and user ID.
+        """
+        serializer = self.get_serializer(data=request.data)  # Use GoOfflineSerializer
+        serializer.is_valid(raise_exception=True)
+
+        user_id = serializer.validated_data.get('user_id')  # Get the user_id from the request
+        pin = serializer.validated_data.get('pin')  # Get the PIN from the request
+
+
+        try:
+            user = User.objects.get(user_id=user_id)
+
+            # Verify the PIN
+            if user.check_password(pin):
+                return Response({"error": "Invalid PIN."}, status=status.HTTP_403_FORBIDDEN)
+
+            # Update the status to offline
+            user.status = 'offline'
+            user.save(update_fields=["status"])
+            return Response({"message": "You are now offline."}, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+    #Endpoint for Account in Usercontrols       
+    @action(detail=False, methods=['get'], url_path='account',permission_classes=[AllowAny], serializer_class=AccountSerializer)
+    def account(self, request):
+        """
+        Endpoint to fetch account details for the logged-in user.
+        """
+        try:
+            # Fetch the user's business details
+            user_id = request.user.user_id  
+            user = User.objects.get(user_id=user_id)
+
+            # Return account details
+            return Response({
+                "business_name": user.business.business_name if user.business else None,
+                "branch_name": user.address.city if user.address else None,  
+                "account_number": user.business.account_number if user.business else None,
+                "sections": {
+                    "licenses": [
+                        {"title": "Buy/Renew", "description": "Buy or Renew licenses."},
+                        {"title": "Existing Licenses", "description": "View your existing licenses."},
+                        {"title": "License Purchase History", "description": "View your license purchase history."}
+                    ],
+                    "thirdparty_addons": [
+                        {"title": "Order Aggregators", "description": "Partner applications for order."},
+                        {"title": "Logistics", "description": "Partner applications for logistics support."},
+                        {"title": "Payments", "description": "Configure payment provider to collect payments."},
+                        {"title": "SMS Provider", "description": "Configure an SMS provider to send SMS."},
+                        {"title": "Marketing Provider", "description": "Configure a marketing provider."},
+                        {"title": "Call Provider", "description": "Configure voice provider add-on."},
+                        {"title": "Webhooks", "description": "Configure webhooks."}  
+                    ]
+                }
+            }, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+    #Endpoint for About in Usercontrols
+    @action(detail=False, methods=['get'], url_path='about')
+    def about(self, request):
+        """
+        Endpoint to fetch about information for the application.
+        """
+        if request.user.is_authenticated:
+            try:
+                # Fetch the user's business details
+                user_id = request.user.user_id
+                user = User.objects.get(user_id=user_id)
+
+                # Dynamic branch and device info
+                if user.address and hasattr(user.address, 'city') and hasattr(user.address, 'state'):
+                    branch = f"{user.address.city} ({user.address.state})"
+                else:
+                    branch = "Unknown Branch"
+                device_info = f"Device #({user.device_label})"
+
+            except User.DoesNotExist:
+                return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            
+            branch = "Unknown Branch"
+            device_info = "Unknown Device"
+
+        return Response({
+            "app_name": "ITS POS",
+            "tagline": "The new age PoS",
+            "website": "www.dotpe.in",
+            "support_email": "help.itspos@dotpe.in",
+            "branch": branch,  
+            "device_info": device_info,  
+            "app_version": "3.34.30"
+        }, status=status.HTTP_200_OK)
 
 
 class ForgotPinConfirmView(APIView):

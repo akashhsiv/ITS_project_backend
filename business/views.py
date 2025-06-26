@@ -5,14 +5,11 @@ import string
 
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Business
-from datetime import timedelta
-from django.utils import timezone
-from django.db            import transaction
+from django.db import transaction
 
 from .email_utils import send_welcome_email
 from .serializers import (
@@ -20,14 +17,15 @@ from .serializers import (
     BusinessCreateUpdateSerializer,
 )
 
-from users.models         import User
-from business.models      import Business
+from users.models import User
+from business.models import Business
 
 logger = logging.getLogger(__name__)
 
 
 def generate_key(prefix, length=6):
     return prefix + ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
 
 class BusinessViewSet(viewsets.ModelViewSet):
     queryset = Business.objects.all()
@@ -36,7 +34,8 @@ class BusinessViewSet(viewsets.ModelViewSet):
         if self.action in ["list", "retrieve"]:
             return BusinessReadSerializer
         return BusinessCreateUpdateSerializer
-#     
+
+
 class BusinessActivationView(APIView):
     """
     Activate a user account given its activation token.
@@ -68,7 +67,7 @@ class BusinessActivationView(APIView):
                 business.save(update_fields=["is_active"])
 
         try:
-            send_welcome_email(user, business , pin)
+            send_welcome_email(user, business, pin)
         except Exception:
             logger.exception("Failed to send welcome e-mail after activation")
 
