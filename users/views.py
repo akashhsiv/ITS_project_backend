@@ -1,60 +1,61 @@
 import logging
 import random
 import string
-import bcrypt
-from rest_framework.generics import CreateAPIView
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework import mixins, status, viewsets
 from rest_framework import status
-from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
-from django.utils import timezone
 from django.shortcuts import get_object_or_404
+
+from .email_utils import send_new_pin_email, send_request_registration_key_email
+
 from .models import User
-from .serializers import PINLoginSerializer, UserCreateSerializer
-from .emai_utils import send_activation_email, send_welcome_email
+from .serializers import ChangePinSerializer, DeviceVerificationSerializer, ForgotPinSerializer, ResetDeviceSerializer, UserIDTokenObtainPairSerializer, UserCreateSerializer, UserSerializer, generate_key
+from .email_utils import send_activation_email, send_welcome_email, send_forgot_pin_email
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.db import transaction
+from rest_framework.permissions import IsAuthenticated
 
 logger = logging.getLogger(__name__)
-
-
-def generate_user_id(prefix="USR", length=6):
-    return prefix + ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
 def generate_pin(length=4):
     return ''.join(random.choices(string.digits, k=length))
 
 
+class LoginView(TokenObtainPairView):
+    serializer_class = UserIDTokenObtainPairSerializer
+
+
 class UserActivationView(APIView):
     permission_classes = [AllowAny]
-    
+
     def get(self, request, token):
         try:
-            user = get_object_or_404(User, activation_token=token, is_active=False)
-            
+            user = get_object_or_404(
+                User, activation_token=token, is_active=False)
+
             if not user.is_activation_token_valid():
                 return Response(
-                    {'error': 'Activation link has expired. Please request a new one.'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {
+                        "error": "Activation link is invalid or has expired. "
+                        "Please request a new one."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
-            
-            # Activate the user
-            user.activate_account()
-            
-            # Generate a temporary PIN for first login
-            raw_pin = generate_pin()
-            user.pin_hash = bcrypt.hashpw(raw_pin.encode(), bcrypt.gensalt()).decode()
-            user.pin_plaintext = raw_pin  # Temporary storage for email
-            user.save(update_fields=['pin_hash', 'pin_plaintext'])
-            
-            # Send welcome email with credentials
-            send_welcome_email(user, raw_pin)
-            
+
+            with transaction.atomic():
+                pin = user.activate_account()
+
+            send_welcome_email(user, pin)
+
             return Response(
                 {'message': 'Account activated successfully. Please check your email for login credentials.'},
                 status=status.HTTP_200_OK
             )
-            
+
         except Exception as e:
             logger.error(f"Error activating user account: {str(e)}")
             return Response(
@@ -63,127 +64,171 @@ class UserActivationView(APIView):
             )
 
 
-class UserCreateAPIView(CreateAPIView):
+class UserViewSet(
+        mixins.CreateModelMixin,
+        mixins.RetrieveModelMixin,
+        mixins.UpdateModelMixin,
+        mixins.DestroyModelMixin,
+        mixins.ListModelMixin,
+        viewsets.GenericViewSet):
+
     queryset = User.objects.all()
-    serializer_class = UserCreateSerializer
     permission_classes = [AllowAny]
-    
-    def post(self, request):
-        serializer = UserCreateSerializer(data=request.data)
 
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # choose serializer depending on action
+    serializer_class = UserSerializer
 
-        validated_data = serializer.validated_data
+    # Map each action to its own serializer
+    serializer_action_classes = {
+        "create": UserCreateSerializer,
+        "register_device": DeviceVerificationSerializer,
+        "request_device_registration_key": ResetDeviceSerializer,
+        "change_pin": ChangePinSerializer,
+    }
 
-        # Auto-generate user_id
-        user_id = generate_user_id()
-        
-        # Generate a temporary PIN that will be set after activation
-        raw_pin = generate_pin()
-        hashed_pin = bcrypt.hashpw(raw_pin.encode(), bcrypt.gensalt()).decode()
+    def get_serializer_class(self):
+        """
+        Return the serializer class that should be used for the
+        current action. Falls back to the view-wide `serializer_class`
+        if the action is not in the map.
+        """
+        if self.action in self.serializer_action_classes:
+            return self.serializer_action_classes[self.action]
+        return super().get_serializer_class()
 
-        # Inject values
-        validated_data['user_id'] = user_id
-        validated_data['pin_hash'] = hashed_pin
-        validated_data['is_active'] = False  # User starts as inactive
+    # custom create (POST /api/users/)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data,
+                                         context={"request": request})
+        serializer.is_valid(raise_exception=True)
 
-        # Remove the raw pin if it's in input
-        validated_data.pop('pin', None)
-        
-        # Create the user
-        user = serializer.create(validated_data)
-        
+        user = serializer.save()
+
+        send_activation_email(user, request)
+
+        return Response(
+            {
+                "message": (
+                    "User created successfully. "
+                    "Please check your email to activate your account."
+                )
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=False, methods=["post"], url_path="register_device",
+            serializer_class=DeviceVerificationSerializer,
+            permission_classes=[AllowAny])
+    def register_device(self, request):
+        """
+        Register a device to a user.
+
+        Expected JSON payload:
+        {
+          "device_registration_key": "DC123456",
+          "pin": "1234",
+          "device_label": "Cash-Counter Tablet"
+        }
+        """
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data["user"]
+        device_label = serializer.validated_data["device_label"]
+
+        user.device_label = device_label
+        user.save(update_fields=["device_label"])
+
+        return Response(
+            {
+                "success": True,
+                "message": "Device credentials registered successfully",
+                "business_name": user.business.business_name,
+                "email": user.contact.email,
+                "device_registration_key": user.device_key,
+                "device_label": user.device_label,
+                "user_id": user.user_id,
+            },
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['post'], url_path='request_device_registration_key', serializer_class=ResetDeviceSerializer)
+    def request_device_registration_key(self, request):
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+
+        new_device_key = generate_key("DC", 8)
+        user.device_key = new_device_key
+        user.save(update_fields=["device_key"])
+
         try:
-            # Send activation email
-            send_activation_email(user, request)
-            
-            return Response(
-                {
-                    'message': 'User created successfully. Please check your email to activate your account.',
-                    'user_id': user.user_id,
-                    'email': user.email,
-                },
-                status=status.HTTP_201_CREATED
-            )
-            
+            # Resend the welcome email with existing credentials
+            send_request_registration_key_email(user)
+            return Response({
+                'success': True,
+                'message': 'Device credentials have been sent to your email',
+                'email': user.contact.email
+            })
         except Exception as e:
-            # If email sending fails, delete the user to avoid orphaned accounts
-            user.delete()
-            logger.error(f"Error sending activation email: {str(e)}")
             return Response(
-                {'error': 'Failed to send activation email. Please try again.'},
+                {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        try:
-            # Send email to user with credentials
-            send_user_credentials_email(user, raw_pin)
-        except Exception as e:
-            logger.error(f"Failed to send email: {str(e)}")
+    @action(detail=False, methods=["post"], url_path="forgot_pin", serializer_class=ForgotPinSerializer)
+    def forgot_pin_request(self, request):
 
-        return Response({
-            "message": "User created successfully",
-            "user_id": user.user_id,
-            "pin": raw_pin  # optional: only show in dev
-        }, status=status.HTTP_201_CREATED)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-
-class PINLoginView(APIView):
-    permission_classes = [AllowAny]
-    
-    def post(self, request):
-        serializer = PINLoginSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        user_id = serializer.validated_data['user_id']
-        pin = serializer.validated_data['pin']
+        user = serializer.validated_data["user"]
 
         try:
-            user = User.objects.get(user_id=user_id)
-
-            # Check if account is active
-            if not user.is_active:
-                return Response(
-                    {'error': 'Account not activated. Please check your email for the activation link.'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-            # Verify PIN
-            if not bcrypt.checkpw(pin.encode(), user.pin_hash.encode()):
-                return Response(
-                    {'error': 'Invalid credentials'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-
-            # Update last login
-            user.last_login = timezone.now()
-            user.save(update_fields=['last_login'])
-
-            # Clear the plaintext PIN if it exists (should only be set during activation)
-            if user.pin_plaintext:
-                user.pin_plaintext = None
-                user.save(update_fields=['pin_plaintext'])
-
-            # Get or create token
-            token, created = Token.objects.get_or_create(user=user)
-
-            return Response({
-                'token': token.key,
-                'user': {
-                    'user_id': user.user_id,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'email': user.email,
-                    'role': user.role,
-                    'business_id': str(user.business.id) if user.business else None,
-                    'business_name': user.business.business_name if user.business else None,
-                }
-            })
-
+            token = user.generate_forgot_pin_token()
+            reset_url = request.build_absolute_uri(
+                f"/api/forgot_pin/confirm/{token}/")
+            send_forgot_pin_email(user, reset_url)
+            return Response({"message": "A reset pin link has been sent to your email."})
         except User.DoesNotExist:
-            return Response(
-                {'error': 'Invalid credentials'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({"error": "Business not found."}, status=404)
+        
+    @action(detail=False, methods=["post"], url_path="change_pin",
+            serializer_class=ChangePinSerializer,
+            permission_classes=[IsAuthenticated])
+    def change_pin(self, request):
+        """
+        Allows an authenticated user to change their PIN.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"message": "PIN changed successfully."},
+            status=status.HTTP_200_OK
+        )
+
+
+class ForgotPinConfirmView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, token):
+        try:
+            user = User.objects.get(forgot_pin_token=token)
+            if not user.is_forgot_pin_token_valid():
+                return Response({"error": "Token expired or invalid."}, status=400)
+            new_pin = str(random.randint(1000, 9999))
+            user.set_password(new_pin)  
+            user.forgot_pin_token = None
+            user.forgot_pin_token_expires = None
+            user.save(
+                update_fields=["password", "forgot_pin_token", "forgot_pin_token_expires"])
+            
+            send_new_pin_email(user, new_pin)
+            
+            return Response({"message": "A new PIN has been sent to your email."})
+        except User.DoesNotExist:
+            return Response({"error": "Invalid token."}, status=404)

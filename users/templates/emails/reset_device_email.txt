@@ -1,0 +1,10 @@
+Dear Customer,
+
+As per your request, we have generated a new Device Registration Key for the following business:
+
+Business Name:         {{ user.business.business_name }}
+Branch Name:           {{ user.business.city }}
+Device Registration Key: {{ user.device_key }}
+
+Thanks for doing business with us,  
+The ITS Team

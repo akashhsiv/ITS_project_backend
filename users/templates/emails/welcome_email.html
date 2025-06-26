@@ -53,7 +53,7 @@
     <p>Your account has been successfully activated! Here are your login credentials:</p>
     
     <div class="credentials">
-        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Email:</strong> {{ user.contact.email }}</p>
         <p><strong>Temporary PIN:</strong> {{ pin }}</p>
         {% if user.business %}
             <p><strong>Business:</strong> {{ user.business.business_name }}</p>

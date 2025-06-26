@@ -2,6 +2,9 @@ from django.urls import get_resolver, NoReverseMatch
 from rest_framework.reverse import reverse  
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+import random
+import string
+
 
 @api_view(['GET'])
 def api_root(request, format=None):
@@ -23,3 +26,7 @@ def api_root(request, format=None):
             response_data[name] = f"Error: {str(e)}"
 
     return Response(response_data)
+
+
+def generate_key(prefix, length=8):
+    return prefix + ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))

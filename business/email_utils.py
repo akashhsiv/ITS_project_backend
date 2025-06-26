@@ -11,8 +11,6 @@ import random
 import string
 
 
-def generate_key(prefix, length=8):
-    return prefix + ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
 def send_activation_email(user, request):
@@ -44,7 +42,7 @@ def send_activation_email(user, request):
     # Prepare email content
     subject = "Activate Your ITS Business Account"
     context = {
-        'business_name': business.business_name,
+        'business_name': user.business.business_name,
         'activation_url': activation_url,
         'expiry_hours': 24,
     }
@@ -57,19 +55,27 @@ def send_activation_email(user, request):
         subject=subject,
         message=plain_message,
         from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[business.email],
+        recipient_list=[user.contact.email],
         html_message=html_message,
         fail_silently=False,
     )
 
 
-def send_welcome_email(business):
+def send_welcome_email(user , business, pin):
     # Prepare email content with credentials
     subject = "Your ITS Business Account is Now Active!"
 
     context = {
-        'business': business,
+        'pin': pin,
+        'device_key': user.device_key,
+        'user_id': user.user_id,
+        'account_number': business.account_number,
+        'business_name': business.business_name,
+        'brand_name': business.brand_name or "Not specified",
+        'first_name': user.first_name,
+        'last_name': user.last_name,
     }
+    print(context)
 
     # Render plain text email
     plain_message = render_to_string('emails/welcome_email.txt', context)
@@ -78,7 +84,7 @@ def send_welcome_email(business):
         subject=subject,
         message=plain_message,
         from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[business.email],
+        recipient_list=[user.contact.email],
         fail_silently=False,
     )
 

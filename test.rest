@@ -1,0 +1,62 @@
+@baseUrl = http://127.0.0.1:8000/api
+
+# =============================
+# @name login
+# Get JWT token using user_id + password
+POST {{baseUrl}}/api/auth/login/
+Content-Type: application/json
+
+{
+  "user_id": "ITSZHNMEB",
+  "password": "1234"
+}
+
+
+###
+
+
+
+# =============================
+# @name createUser
+# Create user with the saved token
+POST {{baseUrl}}/users/
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxMTIwMjYwLCJpYXQiOjE3NTA5NDc0NjAsImp0aSI6Ijc0ZjQ1YjVjYjQzZDRkMmI4ZTg2OTlkNmM3Y2JkODhkIiwidXNlcl9pZCI6MTR9.fCyimslY3pcGJsm5BAHtnl80IjRMWpMbI0CG2yOACOU
+
+{
+  "user_id": "USR00222",
+  "first_name": "Priya",
+  "last_name": "Raman",
+  "role": "user",
+  "permitted_stores": ["ChennaiMain", "PondyBranch"],
+  "permitted_licenses": ["MIT", "GPL", "Apache"],
+  "permitted_brands": ["Nike", "Adidas", "Puma"],
+  "allowed_actions": ["create_order", "refund", "view_report"],
+  "all_actions_enabled": false,
+  "can_backdate_orders": true,
+  "can_login_offline": false,
+  "access_profile": null,
+  "access_expires_at": null,
+  "contact": {
+    "email": "vignxs0511@gmail.com",
+    "phone": "+91-9876543210",
+    "title": "Ms"
+  },
+  "address": {
+    "address_line1": "123 Gandhi Road",
+    "city": "Chennai",
+    "state": "Tamil Nadu",
+    "zip_code": "600001",
+    "country": "IN"
+  }
+}
+
+###
+
+# =============================
+# @name getUserList
+# Protected route using same JWT token
+GET {{baseUrl}}/users/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxMTIwMjYwLCJpYXQiOjE3NTA5NDc0NjAsImp0aSI6Ijc0ZjQ1YjVjYjQzZDRkMmI4ZTg2OTlkNmM3Y2JkODhkIiwidXNlcl9pZCI6MTR9.fCyimslY3pcGJsm5BAHtnl80IjRMWpMbI0CG2yOACOU
+
+###

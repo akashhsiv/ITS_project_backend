@@ -22,11 +22,11 @@ from .utils import api_root
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', api_root, name='api-root'),  
+    path('auth/', include('rest_framework.urls')),
     path('api/', include('business.urls')),
-    path('', include('users.urls')),
-    path('api/inventory/', include('inventory.urls')),  # <-- Add this line
-    path('', api_root, name='api-root'),
-    path('inventory/', include('inventory.urls')),
+    path('api/', include('users.urls')),
+    # path('api/inventory/', include('inventory.urls')),  # <-- Add this line
 ]
 
 

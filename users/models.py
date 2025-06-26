@@ -1,4 +1,6 @@
+from django.contrib.auth.models import BaseUserManager
 from datetime import timedelta
+import random
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser
 import uuid
@@ -38,10 +40,6 @@ class Contact(models.Model):
         return f"{self.title or ''} {self.phone or self.email or 'No Contact Info'}".strip()
 
 
-# Using CharField instead of TextChoices for flexibility
-# You can input any string value for these fields
-
-
 class Role(models.TextChoices):
     ADMIN = "Admin", "ADMIN"
     MANAGER = "Manager", "MANAGER"
@@ -58,7 +56,26 @@ class TitleChoices(models.TextChoices):
     MX = "Mx", "Mx."
 
 
+class UserManager(BaseUserManager):
+    def create_user(self, user_id, password=None, **extra_fields):
+        if not user_id:
+            raise ValueError("User must have a user_id")
+        user = self.model(user_id=user_id, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, user_id, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        return self.create_user(user_id, password, **extra_fields)
+
+    def get_by_natural_key(self, user_id):
+        return self.get(user_id=user_id)
+
+
 class User(AbstractBaseUser):
+    objects = UserManager()
 
     # Unique User ID (generated)
     user_id = models.CharField(max_length=20, unique=True)
@@ -144,7 +161,7 @@ class User(AbstractBaseUser):
     updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = 'user_id'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'role']        
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'role']
 
     def __str__(self):
         return f"{self.user_id} - {self.first_name} {self.last_name}"
@@ -163,16 +180,21 @@ class User(AbstractBaseUser):
         self.activation_token_expires = timezone.now() + timedelta(
             hours=24
         )  # Token expires in 24 hours
-        self.save(update_fields=["activation_token", "activation_token_expires"])
+        self.save(update_fields=["activation_token",
+                  "activation_token_expires"])
         return self.activation_token
 
     def activate_account(self):
         self.is_active = True
         self.activation_token = None
         self.activation_token_expires = None
+        pin = str(random.randint(1000, 9999))
+        self.set_password(pin)
         self.save(
-            update_fields=["is_active", "activation_token", "activation_token_expires"]
+            update_fields=["is_active", "activation_token",
+                           "activation_token_expires", "password"]
         )
+        return pin
 
     def is_activation_token_valid(self):
         if not self.activation_token or not self.activation_token_expires:
@@ -182,7 +204,8 @@ class User(AbstractBaseUser):
     def generate_forgot_pin_token(self):
         self.forgot_pin_token = uuid.uuid4()
         self.forgot_pin_token_expires = timezone.now() + timedelta(hours=24)
-        self.save(update_fields=["forgot_pin_token", "forgot_pin_token_expires"])
+        self.save(update_fields=["forgot_pin_token",
+                  "forgot_pin_token_expires"])
         return self.forgot_pin_token
 
     def is_forgot_pin_token_valid(self):

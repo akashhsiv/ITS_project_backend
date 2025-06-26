@@ -5,14 +5,14 @@ Next Steps:
 2. Register your device using the Device Registration Key provided below
 3. Use the PIN provided below to log in
 
-Account Number: {{ business.account_number }}
-Business Name: {{ business.business_name }}
-Brand Name: {{ business.brand_name|default:"Not specified" }}
-Primary Contact: {{ business.first_name }} {{ business.last_name }}
+Account Number: {{ account_number }}
+Business Name: {{ business_name }}
+Brand Name: {{ brand_name }}
+Primary Contact: {{ first_name }} {{ last_name }}
 
-Device Registration Key: {{ business.device_key }}
-User ID: {{ business.user_id }}
-PIN: {{ business.pin }}
+Device Registration Key: {{ device_key }}
+User ID: {{ user_id }}
+PIN: {{ pin }}
 
 Use the Account Number specified above for all future communication.
 
