@@ -17,13 +17,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.http import HttpResponse
+from .utils import api_root
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('business.urls')),
+    path('', include('users.urls')),
     path('api/inventory/', include('inventory.urls')),  # <-- Add this line
-    path('', include('business.urls')),
+    path('', api_root, name='api-root'),
     path('inventory/', include('inventory.urls')),
 ]
 

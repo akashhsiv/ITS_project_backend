@@ -15,9 +15,9 @@ def generate_key(prefix, length=8):
     return prefix + ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
-def send_activation_email(business, request):
+def send_activation_email(user, request):
     # Generate activation token and set expiry
-    activation_token = business.generate_activation_token()
+    activation_token = user.generate_activation_token()
 
     # Build activation path
     activation_path = reverse(

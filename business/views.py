@@ -29,20 +29,16 @@ class BusinessViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         account_number = str(random.randint(10000000, 99999999))
-        device_key = generate_key("DC", 8)
-        user_id = generate_key("ITS", 6)
-        pin = str(random.randint(1000, 9999))
+        # device_key = generate_key("DC", 8)
+        # user_id = generate_key("ITS", 6)
+        # pin = str(random.randint(1000, 9999))
 
         business = serializer.save(
             account_number=account_number,
-            device_key=device_key,
-            user_id=user_id,
-            pin=pin,
             is_active=False
         )
 
         # Send activation email
-        send_activation_email(business, self.request)
 
     def destroy(self, request, *args, **kwargs):
         business = self.get_object()
