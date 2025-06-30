@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     "business",
     "inventory",
     "customer",
-    'pos',
+    'features',
     "cloudinary",
     "cloudinary_storage",
 ]
