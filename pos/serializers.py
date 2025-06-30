@@ -100,7 +100,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         write_only=True
     )
     total = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = OrderItem
         fields = '__all__'

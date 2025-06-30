@@ -18,6 +18,7 @@ router.register(r'companies', CompanyViewSet, basename='companies')
 router.register(r'rista-cards', RistaCardViewSet, basename='rista-cards')
 router.register(r'appointments', AppointmentViewSet, basename='appointments')
 
+# Manual payment routes (non-viewset-style)
 payment_urls = [
     path('initiate/', PaymentViewSet.as_view({'post': 'initiate'}), name='payment-initiate'),
     path('verify/', PaymentViewSet.as_view({'post': 'verify'}), name='payment-verify'),
@@ -25,6 +26,6 @@ payment_urls = [
 ]
 
 urlpatterns = [
-    path('order/', include(router.urls)),
-    # path('payments/', include(payment_urls)),
+    path('order/', include(router.urls)),                      # all model routes (items, orders, etc.)
+    path('order/payments/', include((payment_urls, 'payments'))),  # nested under order/
 ]

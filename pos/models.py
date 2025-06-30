@@ -103,8 +103,7 @@ class Order(models.Model):
         ("cancelled", "Cancelled"),
     ]
 
-    # customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)
-    customer = models.CharField(max_length=20, default="C.ID")
+    customer = models.ForeignKey('Customer', on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

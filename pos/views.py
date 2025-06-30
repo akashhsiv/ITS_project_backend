@@ -118,7 +118,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         if self.action in ['retrieve', 'list']:
             return OrderSerializer
         return super().get_serializer_class()
-
+    @action(detail=False, methods=['get'], url_path='filter-by-status')
+    def filter_by_status(self, request):
+        status_param = request.query_params.get('status')
+        if status_param:
+            orders = self.get_queryset().filter(status=status_param)
+        else:
+            orders = self.get_queryset()
+        serializer = self.get_serializer(orders, many=True)
+        return Response(serializer.data)
     @action(detail=True, methods=['post'], url_path='add-items')
     def add_items(self, request, pk=None):
         order = self.get_object()
@@ -171,7 +179,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.status = 'cancelled'
         order.save()
         return Response({'status': 'Order discarded successfully'})
-
+    
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         order = self.get_object()
