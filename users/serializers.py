@@ -30,7 +30,7 @@ class ContactSerializer(serializers.ModelSerializer):
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['address_line1', 'city', 'state', 'zip_code', 'country', 'landmark', 'lat', 'lng']
+        fields = ['address_line1', 'city', 'state', 'zip_code', 'country', 'landmark', 'latitude', 'longitude']
 
 
 class UserSerializer(serializers.ModelSerializer):
