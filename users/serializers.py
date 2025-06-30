@@ -30,7 +30,7 @@ class ContactSerializer(serializers.ModelSerializer):
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['address_line1', 'city', 'state', 'zip_code', 'country']
+        fields = ['address_line1', 'city', 'state', 'zip_code', 'country', 'landmark', 'lat', 'lng']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -75,7 +75,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = "__all__"
         extra_kwargs = {
-            "password": {"read_only": True},
+            "pin": {"read_only": True},
         }
 
     def create(self, validated_data):
@@ -226,7 +226,7 @@ class ChangePinSerializer(serializers.Serializer):
     def save(self, **kwargs):
         user = self._get_user()
         user.set_password(self.validated_data["new_pin"])  # hashes the new PIN
-        user.save(update_fields=["password"])
+        user.save(update_fields=["pin"])
         return user
 
 #Go offline serializer

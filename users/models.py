@@ -15,6 +15,10 @@ class Address(models.Model):
     state = models.CharField(max_length=100, blank=True, null=True)
     zip_code = models.CharField(max_length=20, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
+    landmark = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+
 
     def __str__(self):
         return f"{self.address_line1}, {self.city or ''}"
@@ -57,11 +61,11 @@ class TitleChoices(models.TextChoices):
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, user_id, password=None, **extra_fields):
+    def create_user(self, user_id, pin=None, **extra_fields):
         if not user_id:
             raise ValueError("User must have a user_id")
         user = self.model(user_id=user_id, **extra_fields)
-        user.set_password(password)
+        user.set_password(pin)
         user.save(using=self._db)
         return user
 

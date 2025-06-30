@@ -12,8 +12,19 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from datetime import timedelta
 import os
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 from pathlib import Path
 from decouple import config
+
+# Cloudinary configuration
+cloudinary.config(
+    cloud_name=config('CLOUDINARY_CLOUD_NAME', 'dpx7q6j1f'),
+    api_key=config('CLOUDINARY_API_KEY', '266666666666666'),
+    api_secret=config('CLOUDINARY_API_SECRET', '3EivMTl4OyeYO6INq1nAZrNwFZ0'),
+    secure=True
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -47,8 +58,14 @@ INSTALLED_APPS = [
     'users',
     'backend',
     'business',
-    'inventory'
+    'inventory',
+    'customer',
+    'cloudinary',
+    'cloudinary_storage',
 ]
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -134,6 +151,14 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+# Cloudinary Storage Settings
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', 'dpx7q6j1f'),
+    'API_KEY': config('CLOUDINARY_API_KEY', '266666666666666'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET', '3EivMTl4OyeYO6INq1nAZrNwFZ0'),
+}
+
 
 
 # Internationalization
