@@ -8,6 +8,7 @@ class Company(models.Model):
     name = models.CharField(max_length=255)
     company_id = models.CharField(max_length=64, unique=True)
     tax_id = models.CharField(max_length=100)
+    company_since = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return self.name
