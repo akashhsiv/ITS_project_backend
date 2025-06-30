@@ -1,10 +1,11 @@
 from rest_framework import filters, status
 from rest_framework.response import Response
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework import viewsets
+from rest_framework.parsers import MultiPartParser, FormParser
 
-from .serializers import CustomerSerializer
-from .models import Customer
-
+from .serializers import CustomerSerializer, CouponCampaignSerializer
+from .models import Customer, CouponCampaign
 
 class CustomerListCreateView(ListCreateAPIView):
     queryset = Customer.objects.all()
@@ -27,3 +28,7 @@ class CustomerDetailView(RetrieveUpdateDestroyAPIView):
         customer.is_blocked = True
         customer.save()
         return Response({'detail': 'Customer blocked instead of deleted.'}, status=status.HTTP_200_OK)
+
+class CouponCampaignViewSet(viewsets.ModelViewSet):
+    queryset = CouponCampaign.objects.all()
+    serializer_class = CouponCampaignSerializer

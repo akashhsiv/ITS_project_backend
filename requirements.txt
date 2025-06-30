@@ -8,3 +8,5 @@ tzdata==2025.2
 cloudinary
 django-cloudinary-storage
 razorpay
+Pillow
+python-doten

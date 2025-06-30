@@ -26,6 +26,7 @@ urlpatterns = [
     path('auth/', include('rest_framework.urls')),
     path('api/', include('business.urls')),
     path('api/', include('users.urls')),
+    path('api/', include('pos.urls')),
     path('api/', include('customer.urls')),
     # path('api/inventory/', include('inventory.urls')),  # <-- Add this line
 ]

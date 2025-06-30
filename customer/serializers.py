@@ -2,6 +2,7 @@ from rest_framework import serializers
 import cloudinary
 from users.models import Address
 from .models import Customer, Membership, LoyaltyInfo, Company
+from .models import CouponCampaign, Discount
 
 
 class AddressSerializer(serializers.ModelSerializer):
@@ -51,6 +52,10 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     company_data = CompanySerializer(write_only=True, required=False)
     company = CompanySerializer(read_only=True)
+    
+    pan_card_front = serializers.ImageField(required=False, allow_null=True, write_only=True)
+    pan_card_back  = serializers.ImageField(required=False, allow_null=True, write_only=True)
+
 
     class Meta:
         model = Customer
@@ -111,7 +116,6 @@ class CustomerSerializer(serializers.ModelSerializer):
 
         if instance.pan_card_back:
             data['pan_card_back'] = instance.pan_card_back.url
-        print(data)
         return data
     
     def update(self, instance, validated_data):
@@ -155,3 +159,29 @@ class CustomerSerializer(serializers.ModelSerializer):
                 LoyaltyInfo.objects.create(customer=instance, **loyalty_data)
 
         return instance
+
+
+
+class DiscountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Discount
+        fields = ['discountCode']
+
+class CouponCampaignSerializer(serializers.ModelSerializer):
+    discounts = DiscountSerializer(many=True)
+    customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all())
+
+    class Meta:
+        model = CouponCampaign
+        fields = [
+            'couponProvider', 'couponCode', 'startDate', 'expiryDate',
+            'campaignName', 'discounts', 'customer'
+        ]
+
+    def create(self, validated_data):
+        discount_data = validated_data.pop('discounts')
+        campaign = CouponCampaign.objects.create(**validated_data)
+        for discount in discount_data:
+            d, _ = Discount.objects.get_or_create(**discount)
+            campaign.discounts.add(d)
+        return campaign

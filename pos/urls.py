@@ -26,5 +26,5 @@ payment_urls = [
 
 urlpatterns = [
     path('order/', include(router.urls)),
-    path('payments/', include(payment_urls)),
+    # path('payments/', include(payment_urls)),
 ]

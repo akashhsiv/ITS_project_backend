@@ -70,3 +70,18 @@ class LoyaltyInfo(models.Model):
     reserved_points = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     points_ending_this_month = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     points_ending_next_month = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+
+class Discount(models.Model):
+    discountCode = models.CharField(max_length=100)
+
+class CouponCampaign(models.Model):
+    couponProvider = models.CharField(max_length=100)
+    couponCode = models.CharField(max_length=100)
+    startDate = models.DateField()
+    expiryDate = models.DateField()
+    campaignName = models.CharField(max_length=100)
+
+    # Assuming you already have a Customer model
+    customer = models.ForeignKey('customer.Customer', on_delete=models.CASCADE, related_name='coupons')
+    discounts = models.ManyToManyField(Discount)

@@ -60,3 +60,27 @@ GET {{baseUrl}}/users/
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxMTIwMjYwLCJpYXQiOjE3NTA5NDc0NjAsImp0aSI6Ijc0ZjQ1YjVjYjQzZDRkMmI4ZTg2OTlkNmM3Y2JkODhkIiwidXNlcl9pZCI6MTR9.fCyimslY3pcGJsm5BAHtnl80IjRMWpMbI0CG2yOACOU
 
 ###
+
+
+### Create a Coupon with Discounts and Customer
+
+POST http://127.0.0.1:8000/api/coupon-campaigns/ HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxNDUzMTkxLCJpYXQiOjE3NTEyODAzOTEsImp0aSI6IjFiOThjY2M5M2I5ODQzODliOWU0Y2VkMTg4NjY3NDQ0IiwidXNlcl9pZCI6MTR9._XOoByNntU5jOvhhAboAcjR7bH7a20oVZUjz0nbwEzY
+
+{
+    "couponProvider": "Flipkart",
+    "couponCode": "FLIP123",
+    "startDate": "2025-07-06",
+    "expiryDate": "2025-07-18",
+    "campaignName": "Monsoon Sale",
+    "discounts": [
+        {
+            "discountCode": "DISC20"
+        },
+        {
+            "discountCode": "DISC30"
+        }
+    ],
+    "customer": "131122324"
+}
