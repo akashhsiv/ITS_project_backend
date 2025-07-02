@@ -75,7 +75,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = "__all__"
         extra_kwargs = {
-            "pin": {"read_only": True},
+            "password": {"read_only": True},
         }
 
     def create(self, validated_data):
@@ -106,26 +106,36 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         return user
 
-
 class UserIDTokenObtainPairSerializer(TokenObtainPairSerializer):
-    username_field = User.USERNAME_FIELD
+
+    # default username_field already = 'user_id' because of your model
+    pin = serializers.CharField(
+        max_length=10,
+        write_only=True,
+        trim_whitespace=False
+    )
+
+    # remove the original password field that SimpleJWT adds
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop("password")
 
     def validate(self, attrs):
-        print("Validating UserIDTokenObtainPairSerializer with attrs:", attrs)
+        # Move pin → password so SimpleJWT’s internal authenticate() works
+        attrs["password"] = attrs.pop("pin")
+
+        # Let SimpleJWT handle auth & token creation
         data = super().validate(attrs)
 
-        user = getattr(self, "user", None)
-        if user is None:
-            raise serializers.ValidationError("Invalid credentials")
+        user = self.user  # set by parent validate()
 
         if not user.is_active:
-            raise serializers.ValidationError(
-                "Your account is not activated yet.")
+            raise serializers.ValidationError("Your account is not activated yet.")
 
         if user.business and not user.business.is_active:
-            raise serializers.ValidationError(
-                "Your business is not activated yet.")
+            raise serializers.ValidationError("Your business is not activated yet.")
 
+        # Extra payload you need
         data["role"] = user.role
         data["first_name"] = user.first_name
         return data

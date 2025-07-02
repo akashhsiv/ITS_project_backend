@@ -217,6 +217,11 @@ class UserViewSet(
         logger.info(f"Test notification sent to user {request.user}.")
         return Response({"message": "Test notification sent successfully."}, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'], url_path='sync-catalog')
+    def synchronize_catalog(self, request):
+        logger.info(f"Catalog synchronization requested by user {request.user}.")
+        return Response({"message": "Catalog synchronization initiated."}, status=status.HTTP_200_OK)
+    
     #Go offline functionality in UserControls
     @action(detail=False, methods=['post'], url_path='go-offline', permission_classes=[AllowAny], serializer_class=GoOfflineSerializer)
     def go_offline(self, request):

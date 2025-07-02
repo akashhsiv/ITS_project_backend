@@ -112,7 +112,7 @@ class User(AbstractBaseUser):
     activation_token_expires = models.DateTimeField(blank=True, null=True)
 
     # Roles & Access
-    role = models.CharField(max_length=50)
+    role = models.CharField(max_length=50,  choices=Role.choices, default=Role.CASHIER)
 
     permitted_stores = ArrayField(
         base_field=models.CharField(max_length=100),

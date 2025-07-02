@@ -130,6 +130,15 @@ class OrderInteractionViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
 
+    def get_serializer_class(self):
+        if self.action == 'add_items':
+            return AddOrderItemSerializer
+        elif self.action == 'discard':
+            return DiscardOrderSerializer
+        elif self.action == 'hold':
+            return HoldOrderSerializer
+        return super().get_serializer_class()
+
     @action(detail=False, methods=['get'], url_path='filter-by-status')
     def filter_by_status(self, request):
         status_param = request.query_params.get('status')
@@ -143,12 +152,29 @@ class OrderInteractionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_items(self, request, pk=None):
         """Add items to an order"""
-        serializer = AddOrderItemSerializer(data=request.data.get('items', []), many=True)
+        items_data = request.data.get('items')
+        print('RAW BODY:', request.data)
+        print('items_data:', items_data)
+
+        # Handle form-encoded single item
+        if items_data is None and isinstance(request.data, dict):
+            # Check for individual fields
+            if any(k in request.data for k in ['item_id', 'sku_code', 'barcode']):
+                items_data = [{
+                    'item_id': request.data.get('item_id'),
+                    'sku_code': request.data.get('sku_code'),
+                    'barcode': request.data.get('barcode'),
+                    'quantity': request.data.get('quantity', 1)
+                }]
+            else:
+                items_data = []
+
+        serializer = AddOrderItemSerializer(data=items_data, many=True)
         serializer.is_valid(raise_exception=True)
 
         order = self.get_object()
         added_items = []
-        
+
         for item_data in serializer.validated_data:
             item = Item.objects.filter(
                 id=item_data.get('item_id')
@@ -157,7 +183,7 @@ class OrderInteractionViewSet(viewsets.ModelViewSet):
             ).first() or Item.objects.filter(
                 barcode=item_data.get('barcode')
             ).first()
-            
+
             if item:
                 order_item = OrderItem.objects.create(
                     order=order,
@@ -208,7 +234,7 @@ class OrderInteractionViewSet(viewsets.ModelViewSet):
         receipt_data = {
             'order_id': order.id,
             'date': order.created_at.strftime("%Y-%m-%d %H:%M"),
-            'customer': order.customer.name if order.customer else "Walk-in Customer",
+            'customer': order.customer.first_name if order.customer else "Walk-in Customer",
             'items': [{
                 'name': item.item.item_name,
                 'quantity': item.quantity,
@@ -235,6 +261,25 @@ class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     
+    def get_serializer_class(self):
+        if self.action == "summary":
+            return OrderSerializer
+
+        if self.action == "initiate_razorpay":
+            return PaymentInitiateSerializer
+        if self.action == "verify_razorpay":
+            return RazorpayPaymentVerifySerializer
+        if self.action == "manual_payment":
+            return ManualPaymentSerializer
+        if self.action == "upi_payment":
+            return UPIPaymentSerializer
+        # if self.action == "apply_discount":
+        #     return ApplyDiscountSerializer 
+        if self.action == "edit_item":
+            return EditItemSerializer        
+
+        # default: parent implementation
+        return super().get_serializer_class()
     @action(detail=True, methods=['get'])
     def summary(self, request, pk=None):
         """Get order summary for payment screen"""
@@ -385,3 +430,4 @@ class RistaCardViewSet(viewsets.ModelViewSet):
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
+    

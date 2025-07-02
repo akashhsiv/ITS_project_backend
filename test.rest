@@ -7,8 +7,8 @@ POST {{baseUrl}}/api/auth/login/
 Content-Type: application/json
 
 {
-  "user_id": "ITSZHNMEB",
-  "password": "1234"
+  "user_id": "ITS13CH3U",
+  "pin": "6854"
 }
 
 
@@ -21,13 +21,13 @@ Content-Type: application/json
 # Create user with the saved token
 POST {{baseUrl}}/users/
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxMTIwMjYwLCJpYXQiOjE3NTA5NDc0NjAsImp0aSI6Ijc0ZjQ1YjVjYjQzZDRkMmI4ZTg2OTlkNmM3Y2JkODhkIiwidXNlcl9pZCI6MTR9.fCyimslY3pcGJsm5BAHtnl80IjRMWpMbI0CG2yOACOU
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxNTI1OTQ1LCJpYXQiOjE3NTEzNTMxNDUsImp0aSI6IjllMDE3NzA2NGYwMzQwODA4NjEzMThhMGY4YmJhMzhkIiwidXNlcl9pZCI6MTV9.5sNz7zHGVFr0-wolgmjkjd7-MuQm1fCtJtb0H7UMODI
 
 {
-  "user_id": "USR00222",
+  "user_id": "USR00223",
   "first_name": "Priya",
   "last_name": "Raman",
-  "role": "user",
+  "role": "Manager",
   "permitted_stores": ["ChennaiMain", "PondyBranch"],
   "permitted_licenses": ["MIT", "GPL", "Apache"],
   "permitted_brands": ["Nike", "Adidas", "Puma"],
@@ -38,15 +38,15 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiY
   "access_profile": null,
   "access_expires_at": null,
   "contact": {
-    "email": "vignxs0511@gmail.com",
+    "email": "malavathvinod470@gmail.com",
     "phone": "+91-9876543210",
     "title": "Ms"
   },
   "address": {
     "address_line1": "123 Gandhi Road",
-    "city": "Chennai",
-    "state": "Tamil Nadu",
-    "zip_code": "600001",
+    "city": "hyderabad",
+    "state": "Telangana",
+    "zip_code": "500008",
     "country": "IN"
   }
 }
