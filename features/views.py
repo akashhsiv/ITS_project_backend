@@ -24,8 +24,26 @@ class ItemViewSet(viewsets.ModelViewSet):
     serializer_class = ItemSerializer  # default for CRUD
     parser_classes = [MultiPartParser]
 
+    def get_serializer_class(self):
+        # Map each custom action to the correct serializer
+        if self.action == 'filter_items':
+            return ItemFilterSerializer
+        if self.action == 'update_item_settings':
+            return ItemUpdateSettingsSerializer
+        if self.action == 'bulk_image_update':
+            return ItemBulkImageSerializer
+        if self.action == 'bulk_upload':
+            return ItemUploadSerializer
+        if self.action == 'export_items':
+            return ItemExportSerializer
+        if self.action == 'upload_price':
+            return ItemPriceUploadSerializer
+        if self.action == 'bulk_delete':
+            return ItemBulkDeleteSerializer
+        return self.serializer_class
+    
     #  Filter Items
-    @action(detail=False, methods=['get'], url_path='filter', serializer_class=ItemFilterSerializer)
+    @action(detail=True, methods=['get'], url_path='filter', serializer_class=ItemFilterSerializer)
     def filter_items(self, request):
         name = request.query_params.get('name')
         sku = request.query_params.get('sku')
@@ -49,7 +67,7 @@ class ItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     #  Bulk Image Update
-    @action(detail=False, methods=['post'], url_path='bulk-image-update', serializer_class=ItemBulkImageSerializer)
+    @action(detail=True, methods=['post'], url_path='bulk-image-update', serializer_class=ItemBulkImageSerializer)
     def bulk_image_update(self, request):
         for key in request.FILES:
             image = request.FILES[key]
@@ -65,7 +83,7 @@ class ItemViewSet(viewsets.ModelViewSet):
         return Response({'status': 'Images updated'}, status=status.HTTP_200_OK)
 
     #  Bulk Upload Items
-    @action(detail=False, methods=['post'], url_path='bulk-upload', serializer_class=ItemUploadSerializer)
+    @action(detail=True, methods=['post'], url_path='bulk-upload', serializer_class=ItemUploadSerializer)
     def bulk_upload(self, request):
         serializer = ItemUploadSerializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
@@ -73,13 +91,13 @@ class ItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     #  Export Items
-    @action(detail=False, methods=['get'], url_path='export', serializer_class=ItemExportSerializer)
+    @action(detail=True, methods=['get'], url_path='export', serializer_class=ItemExportSerializer)
     def export_items(self, request):
         items = self.queryset
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="items.csv"'
         writer = csv.writer(response)
-        writer.writerow(['ID', 'Name', 'SKU', 'Selling Price'])
+        writer.writerow(['id', 'Name', 'SKU', 'Selling Price'])
 
         for item in items:
             writer.writerow([item.id, item.item_name, item.sku_code, item.selling_price])
@@ -87,7 +105,7 @@ class ItemViewSet(viewsets.ModelViewSet):
         return response
 
     #  Upload Prices
-    @action(detail=False, methods=['post'], url_path='upload-price', serializer_class=ItemPriceUploadSerializer)
+    @action(detail=True, methods=['post'], url_path='upload-price', serializer_class=ItemPriceUploadSerializer)
     def upload_price(self, request):
         serializer = ItemPriceUploadSerializer(data=request.data.get('items', []), many=True)
         serializer.is_valid(raise_exception=True)
@@ -115,16 +133,16 @@ class ItemViewSet(viewsets.ModelViewSet):
 
 
 #  Order interactions (add, discard, hold, close, print)
-class ItemViewSet(viewsets.ModelViewSet):
-    queryset = Item.objects.all()
-    serializer_class = ItemSerializer
-    permission_classes = [AllowAny]  # Adjust permissions as needed
+# class ItemViewSet(viewsets.ModelViewSet):
+#     queryset = Item.objects.all()
+#     serializer_class = ItemSerializer
+#     permission_classes = [AllowAny]  # Adjust permissions as needed
 
-    @action(detail=False, methods=['get'])
-    def search(self, request):
-        queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+#     @action(detail=False, methods=['get'])
+#     def search(self, request):
+#         queryset = self.filter_queryset(self.get_queryset())
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)
 
 class OrderInteractionViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
