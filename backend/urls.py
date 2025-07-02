@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/', include('users.urls')),
     path('api/', include('features.urls')),
     path('api/', include('customer.urls')),
+    path('api/', include('cashflow.urls'))
     # path('api/inventory/', include('inventory.urls')),  # <-- Add this line
 ]
 

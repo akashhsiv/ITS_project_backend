@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     'features',
     "cloudinary",
     "cloudinary_storage",
+    'cashflow',
+
 ]
 
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
