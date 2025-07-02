@@ -93,6 +93,27 @@ class OrderSerializer(serializers.ModelSerializer):
         return obj.total_price()
 
 
+from rest_framework import serializers
+
+class AddNoteSerializer(serializers.Serializer):
+    notes = serializers.CharField(
+        allow_blank=True,
+        max_length=500,
+        help_text="Special note for the order"
+    )
+
+
+from rest_framework import serializers
+from decimal import Decimal
+
+class ApplyDiscountSerializer(serializers.Serializer):
+    discount = serializers.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        min_value=0,
+        help_text="Discount amount to apply"
+    )
+
         
 class AddOrderItemSerializer(serializers.Serializer):
     item_id = serializers.IntegerField(required=False)

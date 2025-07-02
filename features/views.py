@@ -291,8 +291,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
             return ManualPaymentSerializer
         if self.action == "upi_payment":
             return UPIPaymentSerializer
-        # if self.action == "apply_discount":
-        #     return ApplyDiscountSerializer 
+        if self.action == "apply_discount":
+            return ApplyDiscountSerializer 
+        if self.action == "add_note":
+            return AddNoteSerializer 
         if self.action == "edit_item":
             return EditItemSerializer        
 
@@ -323,10 +325,14 @@ class PaymentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='add-note')
     def add_note(self, request, pk=None):
         """Add special note to order"""
+        serializer = AddNoteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         order = self.get_object()
-        order.special_notes = request.data.get('notes', '')
+        order.special_notes = serializer.validated_data.get('notes', '')
         order.save()
         return Response({'status': 'Note added'})
+
 
     # Razorpay Payment
     @action(detail=False, methods=['post'], url_path='initiate-razorpay')
@@ -426,18 +432,22 @@ class PaymentViewSet(viewsets.ModelViewSet):
     # Apply Discount
     @action(detail=True, methods=['post'], url_path='apply-discount')
     def apply_discount(self, request, pk=None):
+        serializer = ApplyDiscountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        discount = serializer.validated_data['discount']
+
         try:
             order = Order.objects.get(pk=pk, is_paid=False)
-            discount = Decimal(request.data.get('discount', 0))
             if discount > order.total_price():
                 return Response({"error": "Discount cannot be more than total amount"}, 
-                               status=status.HTTP_400_BAD_REQUEST)
+                                status=status.HTTP_400_BAD_REQUEST)
             
             order.discount = discount
             order.save()
             return Response({'message': f'Discount of {discount} applied successfully'})
         except Order.DoesNotExist:
             return Response({"error": "Order not found or already paid"}, status=status.HTTP_404_NOT_FOUND)
+
 
 # Rista Cards
 class RistaCardViewSet(viewsets.ModelViewSet):
