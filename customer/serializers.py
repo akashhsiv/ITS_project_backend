@@ -61,7 +61,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = [
             'id',
-            'branch_code',
+            'branch',
             'first_name',
             'last_name',
             'phone_number',
