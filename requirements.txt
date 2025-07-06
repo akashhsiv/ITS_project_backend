@@ -9,4 +9,4 @@ cloudinary
 django-cloudinary-storage
 razorpay
 Pillow
-python-doten
+python-dotenv

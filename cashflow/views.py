@@ -3,103 +3,132 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils.timezone import make_aware
 from datetime import datetime, timedelta
-from django.db.models import Sum, F
-
-from cashflow.models import Payment, ReturnOrder, Tip
+from django.db.models import Sum, Count, Avg, Q, F
 from features.models import Order, OrderItem
+from cashflow.models import Payment, Tip, Session, ReturnOrder
+from users.models import User
+from customer.models import Customer
+from django.db.models.functions import TruncDate, TruncMonth
 
 class CashSummaryView(APIView):
     def get(self, request):
-        branch = request.query_params.get('branch')
+        # Get branch from authenticated user
+        if not hasattr(request.user, 'branch'):
+            return Response(
+                {'error': 'User is not associated with any branch'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        branch = request.user.branch
         period = request.query_params.get('period')
-
-        if not branch or not period:
-            return Response({'error': 'branch and period are required'}, status=status.HTTP_400_BAD_REQUEST)
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
 
         try:
-            if len(period) == 10:  # daily
-                start_date = make_aware(datetime.strptime(period, '%Y-%m-%d'))
-                end_date = start_date.replace(hour=23, minute=59, second=59)
-            elif len(period) == 7:  # monthly
-                start_date = make_aware(datetime.strptime(period, '%Y-%m'))
-                end_date = make_aware(datetime(start_date.year, start_date.month + 1, 1)) if start_date.month < 12 else make_aware(datetime(start_date.year + 1, 1, 1))
+            # Handle date range
+            if start_date_str and end_date_str:
+                start_date = make_aware(datetime.strptime(start_date_str, '%Y-%m-%d'))
+                end_date = make_aware(datetime.strptime(end_date_str, '%Y-%m-%d')).replace(hour=23, minute=59, second=59)
+            elif period:
+                if period == 'today':
+                    start_date = make_aware(datetime.now().replace(hour=0, minute=0, second=0))
+                    end_date = make_aware(datetime.now().replace(hour=23, minute=59, second=59))
+                elif period == 'yesterday':
+                    yesterday = datetime.now() - timedelta(days=1)
+                    start_date = make_aware(yesterday.replace(hour=0, minute=0, second=0))
+                    end_date = make_aware(yesterday.replace(hour=23, minute=59, second=59))
+                elif period == 'this_month':
+                    today = datetime.now()
+                    start_date = make_aware(datetime(today.year, today.month, 1))
+                    next_month = today.month % 12 + 1
+                    next_year = today.year + (1 if next_month == 1 else 0)
+                    end_date = make_aware(datetime(next_year, next_month, 1) - timedelta(days=1))
+                    end_date = end_date.replace(hour=23, minute=59, second=59)
+                elif period == 'last_month':
+                    today = datetime.now()
+                    first_day_this_month = today.replace(day=1)
+                    last_day_last_month = first_day_this_month - timedelta(days=1)
+                    start_date = make_aware(datetime(last_day_last_month.year, last_day_last_month.month, 1))
+                    end_date = make_aware(last_day_last_month.replace(hour=23, minute=59, second=59))
+                else:
+                    valid_periods = ['today', 'yesterday', 'this_month', 'last_month']
+                    return Response(
+                        {'error': f'Invalid period. Valid options are: {", ".join(valid_periods)}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             else:
-                raise ValueError
-        except ValueError:
-            return Response({'error': 'Invalid period format'}, status=status.HTTP_400_BAD_REQUEST)
+                # Default to today if no date range or period specified
+                start_date = make_aware(datetime.now().replace(hour=0, minute=0, second=0))
+                end_date = make_aware(datetime.now().replace(hour=23, minute=59, second=59))
 
-        # 🧠 Fetch all orders in range (filter by branch if model has it)
-        orders = Order.objects.filter(created_at__range=(start_date, end_date))
-        order_items = OrderItem.objects.filter(order__in=orders)
+            # Get orders for the current branch in the date range
+            # First get all customers in the current branch
+            customers_in_branch = Customer.objects.filter(branch_code=request.user.branch.branch_code)
+            
+            # Then get orders for those customers
+            orders = Order.objects.filter(
+                created_at__range=(start_date, end_date),
+                customer__in=customers_in_branch
+            )
+            
+            # Get related data
+            order_items = OrderItem.objects.filter(order__in=orders)
+            payments = Payment.objects.filter(order__in=orders)
+            tips = Tip.objects.filter(order__in=orders)
+            returns = ReturnOrder.objects.filter(original_order__in=orders)
+            sessions = Session.objects.filter(
+                started_at__lte=end_date,
+                ended_at__gte=start_date
+            )
 
-        # 🧮 Start calculating
-        gross = order_items.aggregate(total=Sum(F('price') * F('quantity')))['total'] or 0
-        discount = orders.aggregate(total=Sum('discount'))['total'] or 0
-        tips = Tip.objects.filter(order__in=orders)
-        tip_total = tips.aggregate(total=Sum('amount'))['total'] or 0
+            # Calculate metrics
+            gross = order_items.aggregate(total=Sum(F('price') * F('quantity')))['total'] or 0
+            discount = orders.aggregate(total=Sum('discount'))['total'] or 0
+            tip_total = tips.aggregate(total=Sum('amount'))['total'] or 0
+            payment_total = payments.aggregate(total=Sum('amount'))['total'] or 0
+            # Calculate return total from the original order's total price
+            return_total = sum(
+                return_order.original_order.total_price() 
+                for return_order in returns
+            )
+            # Calculate tax total from order items if tax is included in item prices
+            tax_total = 0  # Default to 0 if tax calculation is not implemented
+            round_off = 0  # Not currently tracked in the Order model
+            net_sales = gross - discount
+            
+            # Calculate number of unique customers
+            no_of_people = orders.values('customer').distinct().count()
+            no_of_sales = orders.count()
+            avg_sale = net_sales / no_of_sales if no_of_sales > 0 else 0
+            avg_sale_per_person = net_sales / no_of_people if no_of_people > 0 else 0
 
-        payments = Payment.objects.filter(order__in=orders)
-        payment_total = payments.aggregate(total=Sum('amount'))['total'] or 0
+            # Prepare response with only essential fields
+            response_data = {
+                "branchName": request.user.branch.branch_name if hasattr(request.user.branch, 'branch_name') else "Unnamed Branch",
+                "grossSales": float(gross),
+                "salesReturn": float(return_total),
+                "discount": float(discount),
+                "directCharges": 0.0,
+                "netSales": float(net_sales),
+                "otherCharges": 0.0,
+                "tax": 0.0,
+                "rounding": 0.0,
+                "tip": float(tip_total),
+                "totalRevenue": float(net_sales + tip_total),
+                "payment": float(payment_total),
+                "balanceDue": float(max(0, net_sales - payment_total)),
+                "netSalesTotal": float(net_sales),
+                "numberOfSales": no_of_sales,
+                "averageSale": float(avg_sale),
+                "numberOfPeople": no_of_people,
+                "averageSalePerPerson": float(avg_sale_per_person),
+                "asOfTime": datetime.now().isoformat()
+            }
 
-        # Assume round_off, cost, tax handled in fields (customize if needed)
-        round_off = orders.aggregate(total=Sum('change_due'))['total'] or 0
-        returns = ReturnOrder.objects.filter(original_order__in=orders)
-        return_total = returns.count()  # or custom amount
+            return Response(response_data)
 
-        items = []
-        for item in order_items.values('item__sku_code', 'item__item_name', 'item__item_brand__name', 'item__category__name', 'item__measuring_unit').annotate(
-            total_qty=Sum('quantity'),
-            gross_amount=Sum(F('price') * F('quantity')),
-        ):
-            items.append({
-                "skuCode": item['item__sku_code'],
-                "itemName": item['item__item_name'],
-                "brandName": item['item__item_brand__name'],
-                "accountName": "",  # if using account
-                "categoryName": item['item__category__name'],
-                "subCategory": "",  # if you have subcategory
-                "itemNature": "Goods",  # or from item
-                "type": "Main",  # default
-                "measuringUnit": item['item__measuring_unit'],
-                "itemTotalDiscountAmount": 0,
-                "itemTotalNetAmount": 0,
-                "itemTotalQty": item['total_qty'],
-                "itemTotalgrossAmount": item['gross_amount'],
-                "itemTotaltaxAmount": 0,
-            })
-
-        return Response({
-            "grossAmount": gross,
-            "returnAmount": return_total,
-            "discountTotal": discount,
-            "directChargeTotal": 0,
-            "netAmount": gross - discount,
-            "chargeTotal": 0,
-            "taxTotal": 0,
-            "roundOffTotal": round_off,
-            "tipTotal": tip_total,
-            "revenue": gross + tip_total,
-            "paymentTotal": payment_total,
-            "balanceAmount": (gross - discount) - payment_total,
-            "costOfGoodsSold": 0,
-            "marginOnNetSales": 0,
-            "discounts": [],
-            "categories": [],
-            "charges": [],
-            "taxes": [],
-            "tips": [{"user": t.user.username if t.user else "Anonymous", "amount": t.amount} for t in tips],
-            "payments": [{"mode": p.mode, "amount": p.amount} for p in payments],
-            "noOfSales": orders.count(),
-            "avgSaleAmount": gross / orders.count() if orders.count() else 0,
-            # "noOfPeople": sum([o.number_of_people for o in orders if hasattr(o, 'number_of_people')]),  # Removed due to missing attribute
-            # "avgSaleAmountPerPerson": (gross / sum([o.number_of_people for o in orders if hasattr(o, 'number_of_people')])) if orders else 0,  # Removed due to missing attribute
-            "noOfPeople": 0,
-            "avgSaleAmountPerPerson": 0,
-            "asOfTime": datetime.now().isoformat(),
-            "sessionSummary": [],
-            "channelSummary": [],
-            "costs": [],
-            "items": items,
-            "accounts": [],
-            "accountsWiseChannels": []
-        })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

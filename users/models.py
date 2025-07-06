@@ -64,8 +64,38 @@ class UserManager(BaseUserManager):
     def create_user(self, user_id, pin=None, **extra_fields):
         if not user_id:
             raise ValueError("User must have a user_id")
+            
+        # If branch is provided, ensure it exists and get its ID
+        branch = extra_fields.pop('branch', None)
+        if branch and not isinstance(branch, str) and hasattr(branch, 'id'):
+            branch_id = branch.id
+        else:
+            branch_id = branch
+            
+        # Ensure array fields have proper default values
+        array_fields = {
+            'allowed_actions': ['All Actions'],
+            'permitted_stores': ['All Stores'],
+            'permitted_licenses': ['All Licenses'],
+            'permitted_brands': ['All Brands']
+        }
+        
+        # Set default values for array fields if not provided
+        for field, default_value in array_fields.items():
+            if field not in extra_fields or not extra_fields[field]:
+                extra_fields[field] = default_value
+        
         user = self.model(user_id=user_id, **extra_fields)
         user.set_password(pin)
+        
+        # If branch_id was provided, set it after initial save
+        if branch_id:
+            from business.models import Branch
+            try:
+                user.branch = Branch.objects.get(id=branch_id)
+            except Branch.DoesNotExist:
+                raise ValueError(f"Branch with id {branch_id} does not exist")
+                
         user.save(using=self._db)
         return user
 
@@ -75,6 +105,13 @@ class UserManager(BaseUserManager):
         return self.create_user(user_id, password, **extra_fields)
 
     def get_by_natural_key(self, user_id):
+        # Handle branch-based login (format: 'branchId_username')
+        if '_' in user_id:
+            try:
+                branch_id, username = user_id.split('_', 1)
+                return self.get(user_id=username, branch_id=branch_id)
+            except (ValueError, self.model.DoesNotExist):
+                pass
         return self.get(user_id=user_id)
 
 
@@ -84,13 +121,21 @@ class User(AbstractBaseUser):
     # Unique User ID (generated)
     user_id = models.CharField(max_length=20, unique=True)
 
-    # Business reference
+    # Business and Branch reference
     business = models.ForeignKey(
         "business.Business",
         on_delete=models.CASCADE,
         related_name="users",
         null=True,
         blank=True,
+    )
+    branch = models.ForeignKey(
+        "business.Branch",
+        on_delete=models.SET_NULL,
+        related_name="users",
+        null=True,
+        blank=True,
+        help_text="The branch this user is associated with. Used as part of login credentials."
     )
 
     first_name = models.CharField(max_length=100)

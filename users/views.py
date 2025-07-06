@@ -6,18 +6,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import mixins, status, viewsets
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 
 from .email_utils import send_new_pin_email, send_request_registration_key_email
 
 from .models import User
 from .serializers import AccountSerializer, ChangePinSerializer, DeviceVerificationSerializer, ForgotPinSerializer, GoOfflineSerializer, ResetDeviceSerializer, UserIDTokenObtainPairSerializer, UserCreateSerializer, UserSerializer, generate_key
+from .permissions import IsFirstUserOrAdmin
 from .email_utils import send_activation_email, send_welcome_email, send_forgot_pin_email
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.db import transaction
-from rest_framework.permissions import IsAuthenticated
-
 logger = logging.getLogger(__name__)
 
 
@@ -34,32 +33,63 @@ class UserActivationView(APIView):
 
     def get(self, request, token):
         try:
-            user = get_object_or_404(
-                User, activation_token=token, is_active=False)
+            logger.info(f"Attempting to activate account with token: {token}")
+            
+            # First try to find the user with the token (case-insensitive)
+            try:
+                user = User.objects.get(activation_token=token, is_active=False)
+                logger.info(f"Found user for activation: {user.user_id}")
+            except User.DoesNotExist:
+                # Log more details about why the user wasn't found
+                logger.error(f"No inactive user found with activation token: {token}")
+                # Check if user exists but is already active
+                if User.objects.filter(activation_token=token, is_active=True).exists():
+                    logger.error("User with this token is already active")
+                    return Response(
+                        {"error": "This account has already been activated. Please log in."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                return Response(
+                    {"error": "Invalid or expired activation link. Please request a new one."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            except Exception as e:
+                logger.error(f"Error looking up user with token {token}: {str(e)}")
+                raise
 
             if not user.is_activation_token_valid():
+                logger.error(f"Activation token expired for user {user.user_id}")
                 return Response(
                     {
-                        "error": "Activation link is invalid or has expired. "
+                        "error": "Activation link has expired. "
                         "Please request a new one."
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            with transaction.atomic():
-                pin = user.activate_account()
+            try:
+                with transaction.atomic():
+                    logger.info(f"Activating account for user: {user.user_id}")
+                    pin = user.activate_account()
+                    logger.info(f"Account activated successfully for user: {user.user_id}")
 
-            send_welcome_email(user, pin)
+                # Send welcome email with credentials
+                send_welcome_email(user, pin)
+                logger.info(f"Welcome email sent to {user.contact.email if user.contact else 'no email'}")
 
-            return Response(
-                {'message': 'Account activated successfully. Please check your email for login credentials.'},
-                status=status.HTTP_200_OK
-            )
+                return Response(
+                    {'message': 'Account activated successfully. Please check your email for login credentials.'},
+                    status=status.HTTP_200_OK
+                )
+
+            except Exception as e:
+                logger.error(f"Error during account activation for user {user.user_id}: {str(e)}", exc_info=True)
+                raise
 
         except Exception as e:
-            logger.error(f"Error activating user account: {str(e)}")
+            logger.error(f"Unexpected error in UserActivationView: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'An error occurred while activating your account. Please contact support.'},
+                {'error': 'An error occurred while activating your account. Our team has been notified.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -73,7 +103,7 @@ class UserViewSet(
         viewsets.GenericViewSet):
 
     queryset = User.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [IsFirstUserOrAdmin]
 
     # choose serializer depending on action
     serializer_class = UserSerializer
@@ -98,23 +128,42 @@ class UserViewSet(
 
     # custom create (POST /api/users/)
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data,
-                                         context={"request": request})
+        # Debug logging
+        logger.info(f"User attempting to create: {request.user.user_id}")
+        user_role = getattr(request.user, 'role', '')
+        logger.info(f"User role: {user_role}")
+        logger.info(f"Is authenticated: {request.user.is_authenticated}")
+        
+        # Only allow admin users to create new users (case-insensitive check)
+        if not request.user.is_authenticated or not user_role or str(user_role).lower() != 'admin':
+            logger.warning(f"Access denied for user {getattr(request.user, 'user_id', 'unknown')} with role '{user_role}'")
+            return Response(
+                {"detail": f"You do not have permission to perform this action. Only Admin users can create new users. Your role: '{user_role}'"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.save()
-
-        send_activation_email(user, request)
-
-        return Response(
-            {
-                "message": (
-                    "User created successfully. "
-                    "Please check your email to activate your account."
-                )
-            },
-            status=status.HTTP_201_CREATED
-        )
+        try:
+            user = serializer.save()
+            send_activation_email(user, request)
+            
+            return Response(
+                {
+                    "message": (
+                        "User created successfully. "
+                        "Please check your email to activate your account."
+                    )
+                },
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            logger.error(f"Error creating user: {str(e)}")
+            return Response(
+                {"detail": "An error occurred while creating the user."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=["post"], url_path="register_device",
             serializer_class=DeviceVerificationSerializer,
