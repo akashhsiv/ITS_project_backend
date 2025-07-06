@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
-from customer.models import Address
+from users.models import Address
 
 class Business(models.Model):
     BUSINESS_TYPES = [

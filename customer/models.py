@@ -1,7 +1,9 @@
 from django.db import models
 from django.core.validators import RegexValidator
+from business.models import Branch 
 from users.models import Address  
 from cloudinary.models import CloudinaryField
+
 
 
 class Company(models.Model):
@@ -26,7 +28,7 @@ class Customer(models.Model):
         primary_key=True,
         validators=[RegexValidator(regex=r'^[a-zA-Z0-9_\-]+$', message='Invalid customer ID')]
     )
-    branch_code = models.CharField(max_length=50)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100, blank=True, null=True)
     phone_number = models.CharField(max_length=15)

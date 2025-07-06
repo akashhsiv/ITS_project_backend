@@ -20,9 +20,12 @@ class CashSummaryView(APIView):
             )
             
         branch = request.user.branch
+        print("🔍 Branch:", branch)
         period = request.query_params.get('period')
         start_date_str = request.query_params.get('start_date')
         end_date_str = request.query_params.get('end_date')
+        print("📅 Start Date:", start_date_str)
+        print("📅 End Date:", end_date_str)
 
         try:
             # Handle date range
@@ -63,17 +66,21 @@ class CashSummaryView(APIView):
 
             # Get orders for the current branch in the date range
             # First get all customers in the current branch
-            customers_in_branch = Customer.objects.filter(branch_code=request.user.branch.branch_code)
-            
+            customers_in_branch = Customer.objects.filter(branch=request.user.branch)
+            print("👥 Customers in Branch:", customers_in_branch.count())
+
             # Then get orders for those customers
             orders = Order.objects.filter(
                 created_at__range=(start_date, end_date),
                 customer__in=customers_in_branch
             )
-            
+            print("📦 Orders found:", orders.count())
+
             # Get related data
             order_items = OrderItem.objects.filter(order__in=orders)
             payments = Payment.objects.filter(order__in=orders)
+            print("🧾 Order Items:", order_items.count())
+            print("💰 Payments found:", payments.count())
             tips = Tip.objects.filter(order__in=orders)
             returns = ReturnOrder.objects.filter(original_order__in=orders)
             sessions = Session.objects.filter(
@@ -91,6 +98,7 @@ class CashSummaryView(APIView):
                 return_order.original_order.total_price() 
                 for return_order in returns
             )
+           
             # Calculate tax total from order items if tax is included in item prices
             tax_total = 0  # Default to 0 if tax calculation is not implemented
             round_off = 0  # Not currently tracked in the Order model
@@ -124,7 +132,9 @@ class CashSummaryView(APIView):
                 "averageSalePerPerson": float(avg_sale_per_person),
                 "asOfTime": datetime.now().isoformat()
             }
-
+            print("🧮 Net Sales:", net_sales)
+            print("💸 Payment Total:", payment_total)
+            print("📊 Response Summary:", response_data)
             return Response(response_data)
 
         except Exception as e:
